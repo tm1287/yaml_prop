@@ -100,12 +100,19 @@ class Lambda(YAMLObject):
     _yaml_attrs = ('args', 'expr', 'alias')
 
     def __init__(self, args: typ.Sequence[str], expr: str, alias: typ.Mapping[str, typ.Any]):
-        
+        """Initializes :code:`Lambda`, see class docstring"""
         self.args = tuple(args)
         self.expr = expr
         self.alias = tuple(alias)
 
         self.local_dict = lambda *args: self.alias | {a: arg for a, arg in zip(self.args, args)}
 
-    def __call__(self, *args):
+    def __call__(self, *args) -> np.ndarray:
+        """Evaluates :code:`Lambda`
+        
+        :param *args: Arguments in order of :code:`self.args`
+        
+        :returns: Evaluation
+        :rtype: numpy.ndarray
+        """
         return ne.evaluate(self.expr, local_dict=self.local_dict(args), global_dict={})
