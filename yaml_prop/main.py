@@ -20,8 +20,7 @@ import yaml
 import numpy as np
 
 from .math import (array_yaml_constructor, numpy_array_yaml_representer,
-                   numexpr_yaml_constructor, 
-                   lambda_yaml_constructor, lambda_yaml_representer)
+                   numexpr_yaml_constructor, Lambda)
 from .properties import ConstantProperty, TableProperty, FunctionProperty
 
 
@@ -35,7 +34,7 @@ class PropertyLoader(yaml.SafeLoader):
 
         self.add_constructor(u'!array', array_yaml_constructor)
         self.add_constructor(u'!numexpr', numexpr_yaml_constructor)
-        self.add_constructor(u'!lambda', lambda_yaml_constructor)
+        self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
 
 
 class PropertyDumper(yaml.SafeDumper):
@@ -46,4 +45,4 @@ class PropertyDumper(yaml.SafeDumper):
             self.add_representer(prop, prop.yaml_representer)
 
         self.add_representer(np.ndarray, numpy_array_yaml_representer)
-        self.add_representer(function, lambda_yaml_representer)
+        self.add_representer(Lambda, Lambda.yaml_representer)

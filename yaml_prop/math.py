@@ -14,8 +14,7 @@ Software Foundation) version 2.0 dated June 1991.
 """
 __authors__ = ['Blake Christierson, UT Austin <bechristierson@utexas.edu>']
 __all__ = ['array_yaml_constructor', 'numpy_array_yaml_representer',
-           'numexpr_yaml_constructor',
-           'lambda_yaml_constructor', 'lambda_yaml_representer']
+           'numexpr_yaml_constructor', 'Lambda']
 
 import typing as typ
 
@@ -23,6 +22,8 @@ import yaml
 
 import numpy as np
 import numexpr as ne
+
+from .common import YAMLObject
 
 
 # %%
@@ -83,13 +84,28 @@ def numexpr_yaml_constructor(loader: yaml.Loader, node: yaml.MappingNode) -> np.
 
 
 # %%
-def lambda_yaml_constructor(loader: yaml.Loader, node: yaml.MappingNode) -> typ.Callable:
-    mapping = {'args': [], 'expr': '', 'alias': {}}
-    mapping.update(loader.construct_mapping(node, deep=True))
-    num_args = len(mapping['args'])
-    expr = ne.evaluate(mapping['expr'], local_dict=mapping['alias'])
-    raise NotImplementedError
+class Lambda(YAMLObject):
+    """Lambda expression used for evaluating functional relationships
 
+    :param args: Lambda arguments
+    :type args: typing.Sequence[str]
 
-def lambda_yaml_representer(dumper: yaml.Dumper, callable: typ.Callable) -> yaml.MappingNode:
-    raise NotImplementedError("Lambda YAML representer not implemented")
+    :param expr: Lambda expression (must be :code:`numexpr` compatible)
+    :type expr: str
+
+    :param alias: Expression aliases to be resolved
+    :type alias: typing.Mapping[str, typing.Any]
+    """
+    _yaml_tag = u'!lambda'
+    _yaml_attrs = ('args', 'expr', 'alias')
+
+    def __init__(self, args: typ.Sequence[str], expr: str, alias: typ.Mapping[str, typ.Any]):
+        
+        self.args = tuple(args)
+        self.expr = expr
+        self.alias = tuple(alias)
+
+        self.local_dict = lambda *args: self.alias | {a: arg for a, arg in zip(self.args, args)}
+
+    def __call__(self, *args):
+        return ne.evaluate(self.expr, local_dict=self.local_dict(args), global_dict={})
