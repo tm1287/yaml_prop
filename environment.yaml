@@ -1,4 +1,4 @@
-name: pyyaml_prop
+name: yaml_prop
 channels:
   - conda-forge
   - defaults
@@ -9,7 +9,6 @@ dependencies:
   - scipy
   - pyyaml
   - numexpr
-  - ipykernel
   - pip
   - pip:
     - pint
