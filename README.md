@@ -1,5 +1,5 @@
 # yaml_prop
-Extended PyYAML loader and dumper for phyiscal properties used in scientific computing.
+Extended PyYAML loader and dumper for properties with physical units used in scientific computing.
 
 Copyright (c) 2024-, The University of Texas at Austin
 
