@@ -13,9 +13,13 @@ terms of the GNU General Public License (as published by the Free
 Software Foundation) version 3.0 dated June 2007.
 """
 __authors__ = ['Blake Christierson, UT Austin <bechristierson@utexas.edu>']
-__all__ = ['PropertyLoader', 'PropertyDumper']
+__all__ = ['PropertyLoader', 'load', 'load_all', 
+           'PropertyDumper']
+
+import typing as typ
 
 import yaml
+from yaml.reader import _ReadStream
 
 import numpy as np
 
@@ -26,8 +30,8 @@ from .properties import ConstantProperty, TableProperty, FunctionProperty
 
 # %%
 class PropertyLoader(yaml.SafeLoader):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, stream: _ReadStream):
+        super().__init__(stream)
         
         for prop in (ConstantProperty, TableProperty, FunctionProperty):
             self.add_constructor(prop._yaml_tag, prop.yaml_constructor)
@@ -37,6 +41,17 @@ class PropertyLoader(yaml.SafeLoader):
         self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
 
 
+def load(stream: _ReadStream) -> dict:
+    """Thin wrapper of :code:`yaml.load()` with a :code:`PropertyLoader`"""
+    return yaml.load(stream, Loader=PropertyLoader)
+
+
+def load_all(stream: _ReadStream) -> typ.Generator[dict, None, None]:
+    """Thin wrapper of :code:`yaml.load_all()` with a :code:`PropertyLoader`"""
+    return yaml.load_all(stream, Loader=PropertyLoader)
+
+
+# %%
 class PropertyDumper(yaml.SafeDumper):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,5 +59,6 @@ class PropertyDumper(yaml.SafeDumper):
         for prop in (ConstantProperty, TableProperty, FunctionProperty):
             self.add_representer(prop, prop.yaml_representer)
 
+        self.add_representer(type(None), lambda dumper, _: dumper.represent_scalar(u'tag:yaml.org,2002:null', ''))
         self.add_representer(np.ndarray, numpy_array_yaml_representer)
         self.add_representer(Lambda, Lambda.yaml_representer)

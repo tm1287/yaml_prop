@@ -15,7 +15,7 @@ Software Foundation) version 3.0 dated June 2007.
 from __future__ import annotations
 
 __authors__ = ['Blake Christierson, UT Austin <bechristierson@utexas.edu>']
-__all__ = ['ConstantProperty', 'TableProperty', 'FunctionProperty']
+__all__ = ['ConstantProperty', 'TableProperty', 'FunctionProperty', '_Property']
 
 import typing as typ
 
@@ -211,6 +211,7 @@ class FunctionProperty(YAMLObject):
         self.symbols = tuple(symbols)
         self.expression = expression # TODO: expression unit conversions
     
+        self._old_units = units
         self.defaults, self.units = [], []
         for d, u in zip(defaults, units):
             default, unit = UNITS.base(d, u)
@@ -226,7 +227,7 @@ class FunctionProperty(YAMLObject):
         self.bounds = np.array(self.bounds)
     
     def __call__(self, *args, **kwargs) -> float | np.ndarray[float]:
-        """Evaluates expression.
+        """Evaluates expression with physical unit conversions
 
         :param args: Positional arguments
         :param kwargs: Keyword arguments
@@ -236,9 +237,10 @@ class FunctionProperty(YAMLObject):
         """
         x = _parse_prop_args(self, args, kwargs)
         for i, xi in enumerate(x.T):
+            x[i] = UNITS.to(xi, self.units[i], self._old_units[i])
             if typ.Any(xi < self.bounds[i][0]) or typ.Any(self.bounds[i][1] < xi):
                 raise ValueError("Evaluation point is outside of bounds")
-        return self.expression(x)
+        return UNITS.to(self.expression(x), self._old_units[-1], self.units[-1])
     
     def plot(self, argument: str, units: typ.Mapping[str, str] | None = None, **kwargs) \
             -> tuple[list[plt.LineCollection], dict[str,str]]:
@@ -267,6 +269,9 @@ class FunctionProperty(YAMLObject):
     
 
 # %%
+_Property = ConstantProperty | TableProperty | FunctionProperty
+
+
 def _parse_prop_args(prop: TableProperty | FunctionProperty, *args, **kwargs) -> np.ndarray:
     """Parses property evaluation arguments
 

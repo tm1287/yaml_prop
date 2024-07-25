@@ -46,7 +46,7 @@ class Units:
             self.registry.Unit('mm/mm/K'),  # coefficient of thermal expansion
             self.registry.Unit('J/kg/K'),   # specific heat capacity
             self.registry.Unit('W/m/K'),    # thermal conductivity
-            self.registry.Unit('Ω m')]    # electrical resistivity
+            self.registry.Unit('Ω m')]      # electrical resistivity
         self.preferred = {qp.dimensionality: qp for qp in self.registry.default_preferred_units}
 
     def to(self, value: float | typ.Collection[float], old_unit: str, new_unit: str) \

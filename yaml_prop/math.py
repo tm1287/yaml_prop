@@ -93,17 +93,18 @@ class Lambda(YAMLObject):
     :param expr: Lambda expression (must be :code:`numexpr` compatible)
     :type expr: str
 
-    :param alias: Expression aliases to be resolved
-    :type alias: typing.Mapping[str, typing.Any]
+    :param alias: Expression aliases to be resolved, defaults to :code:`dict()`
+    :type alias: typing.Mapping[str, typing.Any], optional
     """
     _yaml_tag = u'!lambda'
     _yaml_attrs = ('args', 'expr', 'alias')
 
-    def __init__(self, args: typ.Sequence[str], expr: str, alias: typ.Mapping[str, typ.Any]):
+    def __init__(self, args: typ.Sequence[str], expr: str, 
+                 alias: typ.Mapping[str, typ.Any] = None):
         """Initializes :code:`Lambda`, see class docstring"""
         self.args = tuple(args)
         self.expr = expr
-        self.alias = tuple(alias)
+        self.alias = dict() if alias is None else alias
 
         self.local_dict = lambda *args: self.alias | {a: arg for a, arg in zip(self.args, args)}
 
