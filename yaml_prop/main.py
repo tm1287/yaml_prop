@@ -17,10 +17,7 @@ __all__ = ['PropertyLoader', 'load', 'load_all',
            'PropertyDumper']
 
 import typing as typ
-
 import yaml
-from yaml.reader import _ReadStream
-
 import numpy as np
 
 from .math import (array_yaml_constructor, numpy_array_yaml_representer,
@@ -30,7 +27,7 @@ from .properties import ConstantProperty, TableProperty, FunctionProperty
 
 # %%
 class PropertyLoader(yaml.SafeLoader):
-    def __init__(self, stream: _ReadStream):
+    def __init__(self, stream):
         super().__init__(stream)
         
         for prop in (ConstantProperty, TableProperty, FunctionProperty):
@@ -41,12 +38,12 @@ class PropertyLoader(yaml.SafeLoader):
         self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
 
 
-def load(stream: _ReadStream) -> dict:
+def load(stream) -> dict:
     """Thin wrapper of :code:`yaml.load()` with a :code:`PropertyLoader`"""
     return yaml.load(stream, Loader=PropertyLoader)
 
 
-def load_all(stream: _ReadStream) -> typ.Generator[dict, None, None]:
+def load_all(stream) -> typ.Generator[dict, None, None]:
     """Thin wrapper of :code:`yaml.load_all()` with a :code:`PropertyLoader`"""
     return yaml.load_all(stream, Loader=PropertyLoader)
 
