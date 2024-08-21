@@ -18,6 +18,7 @@ __all__ = ['PropertyLoader', 'load', 'load_all',
 
 import typing as typ
 import yaml
+import yaml_include
 import numpy as np
 
 from .math import (array_yaml_constructor, numpy_array_yaml_representer,
@@ -36,7 +37,7 @@ class PropertyLoader(yaml.SafeLoader):
         self.add_constructor(u'!array', array_yaml_constructor)
         self.add_constructor(u'!numexpr', numexpr_yaml_constructor)
         self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
-
+        self.add_constructor("!inc", yaml_include.Constructor())
 
 def load(stream) -> dict:
     """Thin wrapper of :code:`yaml.load()` with a :code:`PropertyLoader`"""
