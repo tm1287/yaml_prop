@@ -13,3 +13,4 @@ dependencies:
   - pip:
     - pint
     - mip
+    - pyyaml-include>=2
