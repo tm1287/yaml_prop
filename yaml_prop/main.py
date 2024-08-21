@@ -16,10 +16,10 @@ __authors__ = ['Blake Christierson, UT Austin <bechristierson@utexas.edu>']
 __all__ = ['PropertyLoader', 'load', 'load_all', 
            'PropertyDumper']
 
+import numpy as np
 import typing as typ
 import yaml
 import yaml_include
-import numpy as np
 
 from .math import (array_yaml_constructor, numpy_array_yaml_representer,
                    numexpr_yaml_constructor, Lambda)
@@ -27,8 +27,13 @@ from .properties import ConstantProperty, TableProperty, FunctionProperty
 
 
 # %%
+_IncludeConstructors = yaml_include.Constructor | dict[str, yaml_include.Constructor]
+
+
 class PropertyLoader(yaml.SafeLoader):
-    def __init__(self, stream):
+    def __init__(self, 
+            stream, #: yaml._ReadStream 
+            include_constructor: _IncludeConstructors = yaml_include.Constructor()):
         super().__init__(stream)
         
         for prop in (ConstantProperty, TableProperty, FunctionProperty):
@@ -37,7 +42,12 @@ class PropertyLoader(yaml.SafeLoader):
         self.add_constructor(u'!array', array_yaml_constructor)
         self.add_constructor(u'!numexpr', numexpr_yaml_constructor)
         self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
-        self.add_constructor("!inc", yaml_include.Constructor())
+                            
+        if isinstance(include_constructor, dict):
+            for tag, constr in include_constructor.items():
+                self.add_constructor(f"!include_{tag}", constr)
+        else:       
+            self.add_constructor("!include", include_constructor)
 
 def load(stream) -> dict:
     """Thin wrapper of :code:`yaml.load()` with a :code:`PropertyLoader`"""
