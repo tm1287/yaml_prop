@@ -10,7 +10,7 @@ https://github.com/bechrist/yaml_prop
 
 yaml_prop is free software; you can redistribute it and/or modify it under the
 terms of the GNU General Public License (as published by the Free
-Software Foundation) version 2.0 dated June 1991.
+Software Foundation) version 3.0 dated June 2007.
 """
 __authors__ = ['Blake Christierson, UT Austin <bechristierson@utexas.edu>']
 __all__ = ['array_yaml_constructor', 'numpy_array_yaml_representer',
