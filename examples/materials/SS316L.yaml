@@ -1,0 +1,152 @@
+---
+  source: Implementation of a thermomechanical model for the simulation of selective laser melting
+  author: [Hodge, Ferencz, Solberg] 
+  year: 2014
+  style:
+    edgecolor: null
+    facecolor: none
+  properties:
+    # Powder Properties
+    powder_scaling:
+      youngs_modulus: !constant # see table 9 (pg)
+        name: Young's Modulus Powder Scaling
+        unit: ''
+        symbol: ''
+        value: &PHI_E 0.1
+
+      yield_stress: !constant # see table 9 (pg)
+        name: Yield Stress Powder Scaling
+        unit: ''
+        symbol: ''
+        value: &PHI_SIG_Y 0.1
+
+      specific_heat_capacity: !constant # see table 9 (pg)
+        name: Specific Heat Capacity Powder Scaling
+        unit: ''
+        symbol: ''
+        value: &PHI_C 0.5
+
+      thermal_Conductivity: !constant # see table 9 (pg)
+        name: Thermal Conductivity Powder Scaling
+        unit: ''
+        symbol: ''
+        value: &PHI_KAPPA 0.01
+
+    porosity: !constant
+      name: Porosity
+      unit: ''
+      symbol: \varepsilon
+      value: 0.4
+
+    # Mechanical Properties 
+    youngs_modulus: !table # see table 5 (pg 44)
+      name: Young's Modulus
+      arguments: [Powder Fraction, Temperature]
+      units: ['', &T_UNIT degK, GPa]
+      symbols: [\phi, T, E]
+      defaults: [1., 300.]
+      values:
+        - [1., 0.]
+        - &T [273., 432., 590., 749., 907., 1066., 1224., 1383., 1541., 1700.]
+        - - &E !array [200.8, 188.9, 176.3, 163.1, 149.1, 134.6, 119.3, 103.4, 86.8, 69.5]
+          - !numexpr 
+            expr: "E * PHI_E"
+            alias:
+              E: *E
+              PHI_E: *PHI_E
+
+    yield_stress_ratio: !table # see table 7 (pg 45)
+      name: Yield Stress Ratio
+      arguments: [Powder Fraction, Temperature]
+      units: ['', *T_UNIT, MPa/MPa]
+      symbols: [\phi, T, '\sigma_{Y_0}(T)/\sigma_{Y_0}(T_0)']
+      defaults: [1., 300.]
+      values:
+        - [1., 0.]
+        - *T
+        - - &SIG_Y !array [1.00, 0.76, 0.61, 0.53, 0.44, 0.34, 0.26, 0.17, 0.09, 0.00]
+          - !numexpr 
+            expr: "SIG_Y * PHI_SIG_Y"
+            alias: 
+              SIG_Y: *SIG_Y
+              PHI_SIG_Y: *PHI_SIG_Y
+
+    tensile_strength_ratio: !table # see table 8 (pg 45)
+      name: Tensile Strength Ratio
+      arguments: ["Temperature"]
+      units: [*T_UNIT, MPa/MPa]
+      symbols: [T, '\sigma_{T}(T)/\sigma_{T}(T_0)']
+      defaults: [300.]
+      values:
+        - *T
+        - [1.00, 0.82, 0.80, 0.77, 0.63, 0.34, 0.20, 0.14, 0.12, 0.10]
+
+    # Thermal Properties
+    melting_point: !constant # see table 1 (pg 38)
+      name: Melting Point
+      unit: degK
+      symbol: T_m
+      value: 1700. 
+
+    latent_heat_of_melting: !constant # see table 1 (pg 38)
+      name: Latent Heat of Melting
+      unit: GJ/m^3
+      symbol: H_m
+      value: 2.18 
+
+    specific_heat_capacity: !table # see table 4 (pg 44)
+      name: Specific Heat Capacity  
+      arguments: [Powder Fraction, Temperature]
+      units: ['', degK, J/kg/degK]
+      symbols: [\phi, T, C]
+      defaults: [1., 300.]
+      values:
+        - [1., 0.]
+        - [273., 432., 590., 749., 907., 1066., 1224., 1383., 1541., 1650., 1700.]
+        - - &C !array [440., 510., 545., 560., 585., 620., 650., 680., 713., 734., 744.]
+          - !numexpr 
+            expr: "C * PHI_C"
+            alias: 
+              C: *C 
+              PHI_C: *PHI_C
+
+    thermal_conductivity: !table # see table 3 (pg 44)
+      name: Thermal Conductivity
+      arguments: [Powder Fraction, Temperature]
+      units: ['', *T_UNIT, W/m/degK]
+      symbols: [\phi, T, \kappa]
+      defaults: [1., 300.]
+      values:
+        - [1., 0.]
+        - *T
+        - - &KAPPA !array [12.76, 14.94, 17.18, 19.30, 21.48, 23.66, 25.84, 28.02, 30.20, 32.28]
+          - !numexpr 
+            expr: "KAPPA * PHI_KAPPA"
+            alias: 
+              KAPPA: *KAPPA
+              PHI_KAPPA: *PHI_KAPPA
+            
+    coefficient_of_thermal_expansion: &CTE !table # see table 6 (pg 45)
+      name: Coefficient of Thermal Expansion
+      arguments: [Temperature]
+      units: [*T_UNIT, '10^{-6}/degK']
+      symbols: [T, \alpha]
+      defaults: [300.]
+      values: 
+        - *T
+        - [15.07, 16.09, 16.96, 17.70, 18.29, 18.74, 19.05, 19.21, 19.23, 19.23]
+
+    CTE: *CTE
+
+    # Optical Properties 
+    hemispherical_reflectivity: !constant # see table 1 (pg 38)
+      name: Hemispherical Reflectivity
+      unit: ''
+      symbol: '\rho_h'
+      value: 0.7 # taken from value of pure iron as in Gusarov et. al. (2009)
+
+    # extinction_coefficient: !constant # see table 1 (pg 38)
+    #   name: Extinction Coefficient
+    #   unit: '1/m'
+    #   symbol: '\beta_h'
+    #   value: 60000 

@@ -1,0 +1,140 @@
+---
+  source: Thermal and structural properties of fusion related materials
+  author: [Karditsas, Baptiste]
+  year: 1995
+  properties:
+    # Mechanical Properties
+    density: !table
+        name: Density
+        arguments: [Temperature]
+        units: [degK, kg/m^3]
+        symbols: [T, \rho]
+        defaults: [300.]
+        values: 
+          - [300.]
+          - [8238.0]
+
+    youngs_modulus:
+      - !table
+        name: Young's Modulus
+        arguments: [Temperature]
+        units: [degK, GPa]
+        symbols: [T, E]
+        defaults: [300.]
+        values:
+          - &T [300., 400., 500., 600., 700., 800., 900., 1000.]
+          - [194.18, 188.49, 182.02, 174.29, 166.17, 157.96, 148.63, 136.50]
+      - !function
+        name: Young's Modulus
+        arguments: [Temperature]
+        units: [degK, GPa]
+        symbols: [T, E]
+        defaults: [300.]
+        bounds: [[300., 1000.]]
+        expression: !lambda 
+          args: [T]
+          expr: "205.91 - 2.6913 * 10**(-2) * T - 4.1876 * 10**(-5) * T**2"
+
+    poisson_ratio: !table
+      name: Poisson Ratio
+      arguments: [Temperature]
+      units: [degK, '']
+      symbols: [T, \nu]
+      defaults: [300.]
+      values: 
+        - [300.]
+        - [0.270]
+
+    yield_stress: 
+      - !table
+        name: Yield Stress
+        arguments: [Temperature]
+        units: [degK, MPa]
+        symbols: [T, '\sigma_{Y_0}']
+        defaults: [300.]
+        values:
+          - *T
+          - [206.85, 167.49, 143.38, 128.64, 121.36, 117.62, 112.52, 102.99]
+      - !function
+        name: Yield Stress
+        arguments: [Temperature]
+        units: [degK, MPa]
+        symbols: [T, '\sigma_{Y_0}']
+        defaults: [300.]
+        bounds: [[300., 1000.]]
+        expression: !lambda 
+          args: [T]
+          expr: "448.69 - 1.193 * T + 1.4787 * 10**(-3) * T**2 - 6.3134 * 10**(-7) * T**3"
+
+    # Thermal Properties
+    melting_point: !constant
+      name: Melting Point
+      unit: degC
+      symbol: T_m
+      value: 1400.
+
+    specific_heat_capacity: 
+      - !table
+        name: Specific Heat Capacity
+        arguments: [Temperature]
+        units: [degK, J/kg/degK]
+        symbols: [T, C]
+        defaults: [300.]
+        values:
+          - *T
+          - [468., 504., 527., 550., 563., 576., 589., 602.]
+      - !function
+        name: Specific Heat Capacity
+        arguments: [Temperature]
+        units: [degK, J/kg/degK]
+        symbols: [T, C]
+        defaults: [300.]
+        bounds: [[300., 1000.]]
+        expression: !lambda 
+          args: [T]
+          expr: "365.43 + 0.40649 * T - 1.7321 * 10**(-4) * T**2"
+          
+
+    thermal_conductivity:
+      - !table
+        name: Thermal Conductivity
+        arguments: [Temperature]
+        units: [degK, W/m/degK]
+        symbols: [T, \kappa]
+        defaults: [300.]
+        values:
+          - *T
+          - [13.40, 15.20, 16.75, 18.30, 19.80, 21.30, 22.75, 24.20]
+      - !function
+        name: Thermal Conductivity
+        arguments: [Temperature]
+        units: [degK, W/m/degK]
+        symbols: [T, \kappa]
+        defaults: [300.]
+        bounds: [[300., 1000.]]
+        expression: !lambda
+          args: [T]
+          expr: "9.0109 + 1.5298 * 10**(-2) * T"
+          
+    coefficient_of_thermal_expansion: &CTE 
+      - !table
+        name: Coefficient of Thermal Expansion
+        arguments: [Temperature]
+        units: [degK, '10^{-6}/degK']
+        symbols: [T, \alpha]
+        defaults: [300.]
+        values:
+          - *T
+          - [15.156, 16.051, 16.933, 17.511, 17.946, 18.297, 18.592, 18.847]
+      - !function
+        name: Coefficient of Thermal Expansion
+        arguments: [Temperature]
+        units: [degK, '10^{-6}/degK']
+        symbols: [T, \alpha]
+        defaults: [300.]
+        bounds: [[300., 1000.]]
+        expression: !lambda
+          args: [T]
+          expr: "11.813 + 1.3106 * 10**(-2) * T - 6.1375 * 10**(-6) * T**2"
+
+    CTE: *CTE
