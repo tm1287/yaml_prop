@@ -102,6 +102,7 @@ class TableProperty(YAMLObject):
         """Initializes :code:`TableProperty`, see class docstring"""
         self.name = name
         self.arguments = tuple(arguments)
+        self._arguments = tuple(arg.lower() for arg in self.arguments)
         self.symbols = tuple(symbols)
         self.method = method 
 
@@ -133,7 +134,7 @@ class TableProperty(YAMLObject):
         :return: Interpolated table value(s)
         :rtype: float
         """
-        x = _parse_prop_args(self, args, kwargs)
+        x = _parse_prop_args(self, *args, **kwargs)
         for i, xi in enumerate(x.T):
             for j, xij in enumerate(xi):
                 if xij < self.min[i]:
@@ -144,28 +145,29 @@ class TableProperty(YAMLObject):
                     x[i][j] = self.max[i]
         return self.interp(x)
 
-    def plot(self, argument: str, units: typ.Mapping[str, str] | None = None, **kwargs) \
-            -> tuple[plt.PathCollection, dict[str, str]]: 
+    def plot(self, argument: str, units: tuple[str, ...] | None = None, **kwargs) \
+            -> tuple[plt.PathCollection, tuple[str, ...]]: 
         """Generates scatter plot and returns plot object and display units
 
         :param argument: Independent argument name
         :type argument: str
 
         :param units: Display units, defaults to property display units
-        :type units: typing.Mapping[str, str], optional
+        :type units: tuple[str, ...], optional
         
         :param kwargs: :code:`matplotlib.pyplot.scatter` kwargs
 
         :return: Scatter plot handle and display units
-        :rtype: tuple[matplotlib.pyplot.PathCollection, dict[str, str]]
+        :rtype: tuple[matplotlib.pyplot.PathCollection, tuple[str, ...]]
         """
-        idx = self.arguments.index(argument)
+        argument = argument.lower()
+        idx = self._arguments.index(argument)
         xq = self.values[idx]
-        x = {a: np.full(xq.shape, d) for a, d in zip(self.arguments, self.defaults)}
+        x = {a: np.full(xq.shape, d) for a, d in zip(self._arguments, self.defaults)}
         x[argument] = xq
     
         y = self(**x)
-        x, y = _convert_to_display_values(x, y, self, units)
+        x, y, units = _convert_to_display_values(x, y, self, units)
         s = plt.scatter(x[argument], y, **kwargs)
         return s, units
     
@@ -208,6 +210,7 @@ class FunctionProperty(YAMLObject):
         """Initializes :code:`FunctionProperty`, see class docstring"""
         self.name = name
         self.arguments = tuple(arguments)
+        self._arguments = tuple(arg.lower() for arg in self.arguments)
         self.symbols = tuple(symbols)
         self.expression = expression # TODO: expression unit conversions
     
@@ -218,11 +221,14 @@ class FunctionProperty(YAMLObject):
             self.defaults.append(default)
             self.units.append(unit)
 
+        _, unit = UNITS.base(0, units[-1])
+        self.units.append(unit)
+
         self.bounds = []
         for b, u_old, u in zip(bounds, units, self.units):
             self.bounds.append(UNITS.to(b, u_old, u))
 
-        self.units = tuple(units)
+        self.units = tuple(self.units)
         self.defaults = np.array(self.defaults)
         self.bounds = np.array(self.bounds)
     
@@ -235,35 +241,36 @@ class FunctionProperty(YAMLObject):
         :return: Evaluated expression value(s)
         :rtype: float | numpy.ndarray[float]
         """
-        x = _parse_prop_args(self, args, kwargs)
+        x = _parse_prop_args(self, *args, **kwargs)
         for i, xi in enumerate(x.T):
-            x[i] = UNITS.to(xi, self.units[i], self._old_units[i])
-            if typ.Any(xi < self.bounds[i][0]) or typ.Any(self.bounds[i][1] < xi):
+            x[i:] = UNITS.to(xi, self.units[i], self._old_units[i]).reshape(-1,1)
+            if any(xi < self.bounds[i][0]) or any(self.bounds[i][1] < xi):
                 raise ValueError("Evaluation point is outside of bounds")
-        return UNITS.to(self.expression(x), self._old_units[-1], self.units[-1])
+        return UNITS.to(self.expression(x), self._old_units[-1], self.units[-1])[0]
     
-    def plot(self, argument: str, units: typ.Mapping[str, str] | None = None, **kwargs) \
-            -> tuple[list[plt.LineCollection], dict[str,str]]:
+    def plot(self, argument: str, units: tuple[str, ...] | None = None, **kwargs) \
+            -> tuple[list[plt.LineCollection], tuple[str, ...]]:
         """Generates plot and returns plot object and display units
 
         :param argument: Independent argument name
         :type argument: str
 
         :param units: Display units, defaults to property display units
-        :type units: typing.Mapping[str, str], optional
+        :type units: tuple[str, ...], optional
         
         :param kwargs: :code:`matplotlib.pyplot.plot` kwargs
 
         :return: Plot handles and display units
-        :rtype: tuple[list[matplotlib.pyplot.LineCollection], dict[str, str]]
+        :rtype: tuple[list[matplotlib.pyplot.LineCollection], tuple[str, ...]]
         """
-        idx = self.arguments.index(argument)
+        argument = argument.lower()
+        idx = self._arguments.index(argument)
         xq = np.linspace(*self.bounds[idx], 1000)
-        x = {a: np.full(xq.shape, d) for a, d in zip(self.arguments, self.defaults)}
+        x = {a: np.full(xq.shape, d) for a, d in zip(self._arguments, self.defaults)}
         x[argument] = xq
     
         y = self(**x)
-        x, y = _convert_to_display_values(x, y, self, units)
+        x, y, units = _convert_to_display_values(x, y, self, units)
         l = plt.plot(x[argument], y, **kwargs)
         return l, units
     
@@ -281,28 +288,27 @@ def _parse_prop_args(prop: TableProperty | FunctionProperty, *args, **kwargs) ->
     :param args: Positional arguments
     :param kwargs: Keyword arguments
 
-    :raises ValueError: If not enough arguments are specified
-
     :return: Argument array
     :rtype: numpy.ndarray
     """
     arguments, i = {}, 0
-    for k in prop.arguments:
-        if k in kwargs.keys():
+    for i, k in enumerate(prop._arguments):
+        if i < len(args):
+            if k in kwargs:
+                raise ValueError(f"'{prop.arguments[i]}' values in args and kwargs")
+            arguments[k] = args
+        elif k in kwargs:
             arguments[k] = kwargs[k]
-        elif args:
-            arguments[k] = args[i]
-            i += 1
         else:
-            raise ValueError("Not enough arguments specified")
+            arguments[k] = prop.defaults[i]
 
-    return np.array([arguments[k] for k in prop.arguments]).T
+    return np.array([arguments[k] for k in prop._arguments]).T
 
 
 def _convert_to_display_values(x: np.ndarray, y: np.ndarray,
                                prop: TableProperty | FunctionProperty,
-                               units: typ.Mapping[str, str] | None = None) \
-                               -> tuple[np.ndarray, np.ndarray]:
+                               units: tuple[str, ...] | None = None) \
+                               -> tuple[np.ndarray, np.ndarray, tuple[str, ...]]:
     """Helper function to convert plotting data to display units
 
     :param x: Independent variable values
@@ -315,25 +321,26 @@ def _convert_to_display_values(x: np.ndarray, y: np.ndarray,
     :type prop: TableProperty | FunctionProperty
     
     :param units: Display units, defaults to :code:`prop.units`
-    :type units: typing.Mapping[str, str], optional
+    :type units: tuple[str, ...], optional
 
-    :return: Display unit variable values
-    :rtype: tuple[numpy.ndarray, numpy.ndarray]
+    :return: Display unit variable values and units
+    :rtype: tuple[numpy.ndarray, numpy.ndarray, tuple[str, ...]]
     """
     if units is None:
-        units = {}
+        units = [None]*len(prop.units)
         for k, xk in x.items():
             if k not in units: 
-                i = prop.arguments.index(k)
-                x[k], units[k] = UNITS.display(xk, prop.units[i])
+                i = prop._arguments.index(k)
+                x[k], u = UNITS.display(xk, prop.units[i])
+                units[i] = u
 
-        y, uy = UNITS.display(y, prop.units[-1])
-        units[prop.name] = uy
+        y, u = UNITS.display(y, prop.units[-1])
+        units[-1] = u
     else:
         for k, xk in x.items():
-            i = prop.arguments.index(k)
-            x[k] = UNITS.to(xk, prop.units[i], units[k])
+            i = prop._arguments.index(k)
+            x[k] = UNITS.to(xk, prop.units[i], units[i])
         
-        y = UNITS.to(y, prop.units[-1], units[prop.name])
+        y = UNITS.to(y, prop.units[-1], units[-1])
 
-    return x, y
+    return x, y, tuple(units)
