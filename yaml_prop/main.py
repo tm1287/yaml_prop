@@ -31,9 +31,11 @@ _IncludeConstructors = yaml_include.Constructor | dict[str, yaml_include.Constru
 
 
 class PropertyLoader(yaml.SafeLoader):
-    def __init__(self, 
-            stream, #: yaml._ReadStream 
-            include_constructor: _IncludeConstructors = yaml_include.Constructor()):
+    include_constructor: _IncludeConstructors | None = None
+
+    def __init__(self,
+            stream, #: yaml._ReadStream
+    ):
         super().__init__(stream)
         
         for prop in (ConstantProperty, TableProperty, FunctionProperty):
@@ -42,12 +44,22 @@ class PropertyLoader(yaml.SafeLoader):
         self.add_constructor(u'!array', array_yaml_constructor)
         self.add_constructor(u'!numexpr', numexpr_yaml_constructor)
         self.add_constructor(Lambda._yaml_tag, Lambda.yaml_constructor)
-                            
-        if isinstance(include_constructor, dict):
-            for tag, constr in include_constructor.items():
+
+        """Invoke default constructor if :code:`set_include_constructor` was not called prior to :code:`PropertyLoader` instantiation"""
+        if self.include_constructor is None:
+            self.include_constructor = yaml_include.Constructor()
+
+        if isinstance(self.include_constructor, dict):
+            for tag, constr in self.include_constructor.items():
                 self.add_constructor(f"!include_{tag}", constr)
-        else:       
-            self.add_constructor("!include", include_constructor)
+        else:
+            self.add_constructor("!include", self.include_constructor)
+
+    @staticmethod
+    def set_include_constructor(include_constructor: _IncludeConstructors):
+        """Singleton pattern for setting :code:`include_constructor`"""
+        if PropertyLoader.include_constructor is None:
+            PropertyLoader.include_constructor = include_constructor
 
 def load(stream) -> dict:
     """Thin wrapper of :code:`yaml.load()` with a :code:`PropertyLoader`"""
